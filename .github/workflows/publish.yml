@@ -1,0 +1,33 @@
+name: Publish signed connector image
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download signed build context
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download v1.0.0 --pattern connector-build-context.tar.gz
+      - name: Extract build context
+        run: mkdir context && tar -xzf connector-build-context.tar.gz -C context
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: context
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/gorannovitskiy/getsit-connector:1.0.0
